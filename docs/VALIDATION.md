@@ -1,47 +1,41 @@
-# MVP validation record
+# Testing and validation
 
-The initial CLI/core and headless Textual tests run in disposable homes/databases,
-without root or tool/package execution. Textual 8.2.8 and Python 3.14 were used on
-the development workstation. Standard-library core/CLI tests also run without
-Textual installed; UI tests then explicitly skip.
+## Run the test suite
 
-Tests cover the bundled task queries, categories, metadata sources/version records,
-many-executable package mappings, favorites/notes/tags across synchronization,
-private file permissions, import rollback, bounded archive parsing without file
-extraction, FTS/SQL input handling, read-only Pacman queries, non-Arch fallback,
-5,000-record performance and keyboard interaction at 140x42 and 80x24 sizes.
+```bash
+.venv/bin/python -m unittest discover -s tests -v
+```
 
-A real BlackArch metadata archive (5,111 package records) was downloaded over HTTPS
-into `/tmp/opencode` and imported as **not independently signature-verified metadata**.
-Its SHA256 was `1528402e6fe9b3afb9258be0e58fb90a947f46700bcd3a8634efa6b3363d6e9a`.
-This hash records the tested input, not an assertion of package authenticity.
-Existing Arch cache snapshots added 15,614 package records. A combined disposable
-catalog contained 20,725 package records, with no repository enablement, signing-key
-import, package installation or execution of indexed programs. Initial imports
-took approximately one second for BlackArch and three seconds for local sources
-on this machine; these are observations, not hardware-independent promises.
+Tests use disposable databases and homes without root or indexed-tool execution.
+Install the optional `tui` extra for headless Textual checks; otherwise UI tests
+explicitly skip. Check the skip count before reporting complete UI coverage.
 
-Package caches are rolling snapshots. Imported metadata is not a command guide,
-and metadata availability does not establish installation or trust.
-An import never authorizes an install action. Future synchronization/download
-features must not blur this boundary or disable verification.
+## Coverage
 
-Remaining validation: distribution packaging in a clean Arch builder; full
-interactive terminal/emulator coverage; documentation accuracy/version review;
-cross-shell PTY/renderer/adapters; Elephant integration; binary packaging and
-release process. No shell feature, native signed package or production release
-is claimed by this MVP.
+- Task search, categories, source/version records and many-executable mappings.
+- Notes, favorites and tags across metadata refresh and schema migration.
+- Private database/backup permissions and preservation of imported snapshots.
+- Transaction rollback, bounded archive reads without extraction, FTS/SQL input
+  handling and terminal-control-sequence filtering.
+- Fixed read-only Pacman queries and operation without a Pacman installation.
+- A 5,000-record fixture and keyboard navigation at wide/narrow terminal sizes.
+- Bundled guide loading, searchable text and provenance in the shared catalog.
 
-## Source-checked guides (0.1.0a2)
+Headless checks do not replace interactive testing in supported terminals.
+Before distributing a package, also inspect wheel contents and test the CLI from
+the built wheel independently of the source checkout. Native Arch packages need
+clean-builder validation and a separately reviewed signing/distribution workflow.
 
-Eight original guides add descriptions, option explanations, examples and cautions.
-The bundled guide index records upstream URLs, review date and version scope;
-the catalog records each guide's content hash. Both interfaces display provenance
-and distinguish source review from runtime validation. Indexed binaries were not
-executed to test the examples. Remaining six purpose references and imported
-package records do not acquire invented guides.
+## Documentation and metadata trust
 
-Tests additionally cover content refresh, searchable guide text and version-1
-migration with a private SQLite backup, preserving personal state, recent history,
-installed snapshots and imported package metadata. Original source/documentation
-is MIT licensed; third-party rights remain separate in NOTICE.
+Bundled guides record upstream sources, review dates and version scope. Source
+review is not runtime validation of an example against an installed binary.
+Purpose-only references and imported package metadata do not acquire inferred
+flags or invented guides. Unknown/version-specific options must remain explicit.
+
+Package caches are rolling snapshots. Imported archives are not independently
+signature-verified by Assist. Metadata availability establishes neither installation
+nor authenticity, and importing it never authorizes execution or installation.
+
+Assisted-shell mode and Elephant integration are not implemented. Do not describe
+catalog tests as cross-shell PTY, terminal-renderer or launcher validation.
