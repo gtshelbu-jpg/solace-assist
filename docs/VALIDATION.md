@@ -21,13 +21,27 @@ import, package installation or execution of indexed programs. Initial imports
 took approximately one second for BlackArch and three seconds for local sources
 on this machine; these are observations, not hardware-independent promises.
 
-Package caches are rolling snapshots. Curated purpose references are not verified
-command guides, and metadata availability does not establish installation or trust.
+Package caches are rolling snapshots. Imported metadata is not a command guide,
+and metadata availability does not establish installation or trust.
 An import never authorizes an install action. Future synchronization/download
 features must not blur this boundary or disable verification.
 
 Remaining validation: distribution packaging in a clean Arch builder; full
 interactive terminal/emulator coverage; documentation accuracy/version review;
-cross-shell PTY/renderer/adapters; Elephant integration; public licensing and
+cross-shell PTY/renderer/adapters; Elephant integration; binary packaging and
 release process. No shell feature, native signed package or production release
 is claimed by this MVP.
+
+## Source-checked guides (0.1.0a2)
+
+Eight original guides add descriptions, option explanations, examples and cautions.
+The bundled guide index records upstream URLs, review date and version scope;
+the catalog records each guide's content hash. Both interfaces display provenance
+and distinguish source review from runtime validation. Indexed binaries were not
+executed to test the examples. Remaining six purpose references and imported
+package records do not acquire invented guides.
+
+Tests additionally cover content refresh, searchable guide text and version-1
+migration with a private SQLite backup, preserving personal state, recent history,
+installed snapshots and imported package metadata. Original source/documentation
+is MIT licensed; third-party rights remain separate in NOTICE.

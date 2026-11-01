@@ -33,7 +33,7 @@ class TUITests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(app.query_one("#results", DataTable).row_count, 14)
                 app.query_one("#search", Input).value = "enumerate smb"
                 await pilot.pause(0.4)
-                self.assertEqual(app.query_one("#results", DataTable).row_count, 2)
+                self.assertEqual(app.query_one("#results", DataTable).row_count, len(self.catalog.search("enumerate smb")))
                 self.assertIn(app.selected_id, {"smbclient", "smbmap"})
                 selected = app.selected_id
                 app.query_one("#results", DataTable).focus()

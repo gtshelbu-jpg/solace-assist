@@ -32,10 +32,18 @@ used for the initial UI validation; older/newer untested versions may differ.
 .venv/bin/sbtools info --json
 ```
 
-The first run seeds 14 **purpose/task references** with upstream documentation
-links. They are not assertions that packages are available or installed, and are
-not verified usage guides. No flags or command examples are inferred. Imported
-package metadata is labelled separately from curated purpose descriptions.
+The catalog includes 14 **purpose/task references**, eight with enriched descriptions,
+option explanations and source-checked example guides: Nmap, tcpdump, Wireshark/TShark,
+readelf, smbclient, Binwalk, Gobuster and RTL-SDR. Each guide records upstream sources,
+review date and version scope. Source review is not runtime validation: review the
+examples and installed version before running anything. Assist never executes them.
+References are not assertions that packages are available or installed. Imported
+package metadata remains labelled separately; no guides are invented for it.
+
+Existing version-1 databases are backed up beside the database before migration,
+including committed WAL contents. Bundled content refreshes automatically while
+preserving notes, tags, favorites, history and imported snapshots. `info` reports
+the migration backup filename. Close older Assist sessions before upgrading.
 
 ## Explicit metadata synchronization
 
@@ -127,7 +135,8 @@ Fish and generic/unknown-shell fallback need explicit integration tests. An
 unsupported grammar gets documentation/manual context, not guessed quoting or
 reconstructed buffers from terminal output. Commands must never auto-submit.
 
-Next: verified command guides/templates, then a thin optional Elephant adapter;
+Next: more source-checked guides and structured templates, then a thin optional Elephant adapter;
 real assisted-shell mode remains its own engineering milestone. Black does not
-depend on Assist to boot. Root/source/documentation licensing must be settled
-before public releases; no license is invented for inherited material here.
+depend on Assist to boot. Original code and documentation are MIT licensed; see
+LICENSE and NOTICE for third-party boundaries. Native package signing and binary
+release validation remain separate milestones.

@@ -35,7 +35,7 @@ def main():
     (output / "PKGBUILD").write_text(recipe)
     (output / "SOURCE_COMMIT").write_bytes(git("rev-parse", "HEAD"))
     print(f"Prepared {output}; SHA256 {digest}")
-    print("Development recipe only. Use an isolated Arch builder and explicit signing; public licensing is unresolved.")
+    print("Use an isolated Arch builder and explicit signing; the native package still needs build validation.")
 
 
 if __name__ == "__main__":

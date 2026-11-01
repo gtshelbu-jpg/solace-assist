@@ -17,5 +17,6 @@ Black's package manager can install it. Textual remains optional for the CLI;
 Black's optional Assist group selects the TUI dependency too.
 
 No native package build or binary-repository publication has been validated yet.
-The recipe deliberately leaves license metadata unresolved: do not publish it
-until the project owner chooses code/data licenses and source provenance policy.
+The recipe installs the MIT license for original code/documentation and the NOTICE
+preserving third-party rights. Native binary-package validation/signing is separate
+from publishing the source repository.

@@ -80,6 +80,12 @@ def show_text(tool):
         if package["description"]: lines.append(package["description"])
         dependencies = json.loads(package["dependencies"])
         if dependencies: lines.append("Dependencies: " + ", ".join(dependencies))
+    if tool["description"]: lines += ["", tool["description"]]
+    guide = tool.get("guide_provenance")
+    if guide:
+        lines += ["Source review: " + guide["reviewed_on"], guide["scope"],
+                  "Examples are source-checked, not runtime-validated. Review before running; Assist never executes them."]
+        lines += ["Source: " + url for url in guide["sources"]]
     if tool["documentation"]: lines += ["", tool["documentation"]]
     else: lines += ["", "No verified command guide is bundled yet. Consult the official documentation; no flags or commands have been inferred."]
     if tool["tags"]: lines.append("Personal tags: " + ", ".join(tool["tags"]))

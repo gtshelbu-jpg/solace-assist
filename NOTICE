@@ -1,0 +1,13 @@
+Solace Assist's original code and original documentation are MIT licensed.
+
+Indexed tools, package binaries, upstream manuals, package metadata and runtime
+dependencies retain their respective licenses and notices; this project's MIT
+license does not relicense them. Tool names and trademarks belong to their owners.
+
+Bundled guides are original explanatory notes and illustrative command syntax,
+checked against the upstream references listed with each guide. Manuals are not
+bundled wholesale. A source-checked example is not a claim of runtime validation
+against every tool version or authorization to run it against a target.
+
+Textual, Rich and other optional Python dependencies are distributed separately
+with their own notices. Solace Assist does not bundle their source code here.

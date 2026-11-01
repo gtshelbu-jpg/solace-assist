@@ -1,17 +1,19 @@
 """SQLite catalog and personal knowledge. No package-manager or network actions."""
 
 from contextlib import contextmanager
+import hashlib
 from importlib.resources import files
 import json
 import os
 from pathlib import Path
 import re
 import sqlite3
+import tempfile
 import time
 from urllib.parse import urlsplit
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 NAME = re.compile(r"[A-Za-z0-9@][A-Za-z0-9@._+-]{0,127}\Z")
 ANSI = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))")
 
@@ -74,6 +76,9 @@ CREATE TABLE IF NOT EXISTS notes(tool_id TEXT PRIMARY KEY REFERENCES tools(id), 
 CREATE TABLE IF NOT EXISTS tags(tool_id TEXT REFERENCES tools(id), tag TEXT,
  PRIMARY KEY(tool_id,tag));
 CREATE TABLE IF NOT EXISTS recent(tool_id TEXT PRIMARY KEY REFERENCES tools(id), viewed_at INTEGER);
+CREATE TABLE IF NOT EXISTS guide_provenance(
+ tool_id TEXT PRIMARY KEY REFERENCES tools(id), revision TEXT NOT NULL,
+ reviewed_on TEXT NOT NULL, scope TEXT NOT NULL, sources_json TEXT NOT NULL);
 CREATE VIRTUAL TABLE IF NOT EXISTS tool_fts USING fts5(
  tool_id UNINDEXED, name, purpose, description, keywords, categories, documentation,
  tokenize='porter unicode61');
@@ -87,20 +92,67 @@ class Catalog:
         if not self.path.exists(): self.path.touch(mode=0o600)
         with self.connection() as db:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, SCHEMA_VERSION):
+            if version not in (0, 1, SCHEMA_VERSION):
                 raise ValueError("Unsupported catalog schema; preserve this database and upgrade Assist")
             tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             if tables and "assist_meta" not in tables:
                 raise ValueError("This is not an Assist database; refusing to modify it")
             self.path.chmod(0o600)
+            backup = self._backup_v1(db) if version == 1 else None
             db.execute("PRAGMA journal_mode=WAL")
             db.executescript(SCHEMA)
+            if seed:
+                self._refresh_bundled(db)
+            if backup:
+                db.execute("INSERT OR REPLACE INTO assist_meta VALUES('migration_backup',?)", (backup.name,))
             db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
-            if seed and not db.execute("SELECT 1 FROM assist_meta WHERE key='bundled_seed'").fetchone():
-                data = json.loads(files("solace_assist").joinpath("data/catalog.json").read_text())
-                for tool in data["tools"]:
-                    self._curated(db, tool)
-                db.execute("INSERT INTO assist_meta VALUES('bundled_seed',?)", (str(data["version"]),))
+
+    def _backup_v1(self, db):
+        # SQLite's backup API includes WAL contents; copying only the .sqlite file
+        # would risk losing recent notes from an open explorer session.
+        with tempfile.NamedTemporaryFile(prefix=self.path.name + ".pre-v2-", suffix=".bak", dir=self.path.parent, delete=False) as handle:
+            path = Path(handle.name)
+        try:
+            target = sqlite3.connect(path)
+            try: db.backup(target)
+            finally: target.close()
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
+        return path
+
+    def _refresh_bundled(self, db):
+        root = files("solace_assist").joinpath("data")
+        seed_bytes = root.joinpath("catalog.json").read_bytes()
+        index_bytes = root.joinpath("guides/index.json").read_bytes()
+        data, index = json.loads(seed_bytes), json.loads(index_bytes)
+        revision = hashlib.sha256(seed_bytes + b"\0" + index_bytes)
+        guides = []
+        for entry in index["guides"]:
+            if not NAME.fullmatch(entry["tool_id"]) or not re.fullmatch(r"[a-z0-9-]+\.md", entry["file"]):
+                raise ValueError("Invalid bundled guide identity")
+            body = root.joinpath("guides", entry["file"]).read_bytes()
+            if len(body) > 65536: raise ValueError("Bundled guide exceeds size limit")
+            if not entry["sources"] or any(not web_url(url) for url in entry["sources"]):
+                raise ValueError("Bundled guides require public web source references")
+            revision.update(entry["file"].encode() + b"\0" + body)
+            guides.append((entry, body.decode("utf-8")))
+        digest = revision.hexdigest()
+        previous = db.execute("SELECT value FROM assist_meta WHERE key='content_revision'").fetchone()
+        if previous and previous[0] == digest: return
+        for tool in data["tools"]:
+            self._curated(db, tool)
+        for entry, body in guides:
+            tool_id = entry["tool_id"]
+            if not db.execute("SELECT 1 FROM tools WHERE id=?", (tool_id,)).fetchone():
+                raise ValueError("Guide references an unknown curated tool")
+            db.execute("UPDATE tools SET documentation=?,documentation_status='source-checked',description=? WHERE id=?",
+                       (text(body, 65536), text(entry["description"]), tool_id))
+            db.execute("INSERT OR REPLACE INTO guide_provenance VALUES(?,?,?,?,?)",
+                       (tool_id, hashlib.sha256(body.encode()).hexdigest(), entry["reviewed_on"], entry["scope"], json.dumps(entry["sources"])))
+            self._index(db, tool_id)
+        db.execute("INSERT OR REPLACE INTO assist_meta VALUES('bundled_seed',?)", (str(data["version"]),))
+        db.execute("INSERT OR REPLACE INTO assist_meta VALUES('content_revision',?)", (digest,))
 
     @contextmanager
     def connection(self):
@@ -226,6 +278,9 @@ class Catalog:
             result["installed_packages"] = [dict(r) for r in db.execute(f"SELECT * FROM installed WHERE package IN ({placeholders})", names)]
             result["package_executables"] = [dict(r) for r in db.execute(f"SELECT * FROM package_executables WHERE package IN ({placeholders}) ORDER BY executable", names)]
             result["favorite"] = bool(db.execute("SELECT 1 FROM favorites WHERE tool_id=?", (tool_id,)).fetchone())
+            guide = db.execute("SELECT * FROM guide_provenance WHERE tool_id=?", (tool_id,)).fetchone()
+            result["guide_provenance"] = dict(guide) if guide else None
+            if guide: result["guide_provenance"]["sources"] = json.loads(guide["sources_json"])
             note = db.execute("SELECT body FROM notes WHERE tool_id=?", (tool_id,)).fetchone()
             result["note"] = note[0] if note else ""
             if record_view: db.execute("INSERT OR REPLACE INTO recent VALUES(?,?)", (tool_id, int(time.time())))
@@ -260,4 +315,6 @@ class Catalog:
                     "packages": db.execute("SELECT count(*) FROM packages").fetchone()[0],
                     "installed": db.execute("SELECT count(*) FROM installed").fetchone()[0],
                     "installed_checked_at": (dict(db.execute("SELECT key,value FROM assist_meta")) or {}).get("installed_checked_at"),
+                    "guides": db.execute("SELECT count(*) FROM guide_provenance").fetchone()[0],
+                    "migration_backup": (dict(db.execute("SELECT key,value FROM assist_meta")) or {}).get("migration_backup"),
                     "sources": [dict(r) for r in db.execute("SELECT source,repository,count(*) AS packages,max(imported_at) AS imported_at,provenance FROM packages GROUP BY source,repository,provenance")]}

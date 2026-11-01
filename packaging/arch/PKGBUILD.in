@@ -1,13 +1,13 @@
 # Generated with an exact source SHA256 by prepare-source.py.
-# Development-only until the owner chooses the project/data licenses.
+# Original code/documentation: MIT; third-party notices remain applicable.
 pkgname=solace-assist
 pkgver=@VERSION@
 pkgrel=1
 pkgdesc='Offline security-tool catalog and optional terminal explorer'
 arch=('any')
-license=()
+license=('MIT')
 depends=('python')
-makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel')
+makedepends=('python-build' 'python-installer' 'python-setuptools>=77' 'python-wheel')
 optdepends=('python-textual: keyboard-driven tool explorer')
 source=("$pkgname-$pkgver.tar.gz")
 sha256sums=('@SHA256@')
@@ -26,4 +26,6 @@ package() {
   cd "$srcdir/$pkgname-$pkgver"
   python -m installer --destdir="$pkgdir" dist/*.whl
   install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 NOTICE "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
 }

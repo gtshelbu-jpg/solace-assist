@@ -34,6 +34,12 @@ def detail_markdown(tool):
             dependencies = json.loads(package["dependencies"])
             if dependencies: lines.append("Dependencies: " + escaped(", ".join(dependencies[:24])))
             lines.append(escaped(package["provenance"]))
+    if tool["description"]: lines += [escaped(tool["description"])]
+    guide = tool.get("guide_provenance")
+    if guide:
+        lines += ["**Source review:** " + escaped(guide["reviewed_on"]), escaped(guide["scope"]),
+                  "Examples are source-checked, not runtime-validated. Review before running; Assist never executes them."]
+        lines += ["Source: " + escaped(url) for url in guide["sources"]]
     lines += ["## Documentation"]
     lines.append(tool["documentation"] or "No verified command guide is bundled yet. Use official documentation; no flags or examples are inferred.")
     # Render URLs as text rather than automatically launching external programs.
