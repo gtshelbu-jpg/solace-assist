@@ -1,0 +1,29 @@
+# Generated with an exact source SHA256 by prepare-source.py.
+# Development-only until the owner chooses the project/data licenses.
+pkgname=solace-assist
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc='Offline security-tool catalog and optional terminal explorer'
+arch=('any')
+license=()
+depends=('python')
+makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel')
+optdepends=('python-textual: keyboard-driven tool explorer')
+source=("$pkgname-$pkgver.tar.gz")
+sha256sums=('@SHA256@')
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  python -m build --wheel --no-isolation
+}
+
+check() {
+  cd "$srcdir/$pkgname-$pkgver"
+  PYTHONPATH=src python -m unittest discover -s tests -v
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

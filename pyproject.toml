@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solace-assist"
+version = "0.1.0a1"
+description = "Offline security-tool catalog, CLI and terminal explorer"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+tui = ["textual>=1"]
+
+[project.scripts]
+sbtools = "solace_assist.interfaces.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+solace_assist = ["data/*.json"]
