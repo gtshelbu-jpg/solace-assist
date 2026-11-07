@@ -21,6 +21,9 @@ except ImportError:
 
 @unittest.skipUnless(shutil.which("tmux") and shutil.which("bash") and HAS_TEXTUAL, "tmux/Bash/Textual required for real helper integration")
 class TmuxHelperTests(unittest.TestCase):
+    def setUp(self):
+        Path("/tmp/opencode").mkdir(exist_ok=True)
+
     def test_full_helper_uses_real_pty_and_exits_without_leaking_server(self):
         with tempfile.TemporaryDirectory(dir="/tmp/opencode", prefix="sb-h-") as temp:
             root = Path(temp)

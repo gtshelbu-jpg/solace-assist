@@ -14,6 +14,7 @@ from solace_assist.core.catalog import Catalog
 
 class HelperStateTests(unittest.TestCase):
     def setUp(self):
+        Path("/tmp/opencode").mkdir(exist_ok=True)
         self.temp = tempfile.TemporaryDirectory(dir="/tmp/opencode", prefix="assist-helper-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)

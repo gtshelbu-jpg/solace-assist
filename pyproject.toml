@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "solace-assist"
-version = "0.2.0a1"
+version = "0.2.0a2"
 description = "Offline security-tool catalog, CLI and terminal explorer"
 requires-python = ">=3.11"
 dependencies = []

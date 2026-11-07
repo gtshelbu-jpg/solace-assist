@@ -11,6 +11,7 @@ from solace_assist.interfaces.palette import load_palette, system_palette_path
 
 class PaletteTests(unittest.TestCase):
     def setUp(self):
+        Path("/tmp/opencode").mkdir(exist_ok=True)
         self.temp = tempfile.TemporaryDirectory(dir="/tmp/opencode", prefix="assist-palette-")
         self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name) / "colors.toml"

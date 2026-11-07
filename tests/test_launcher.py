@@ -12,6 +12,7 @@ from solace_assist.interfaces import launcher
 
 class LauncherTests(unittest.TestCase):
     def setUp(self):
+        Path("/tmp/opencode").mkdir(exist_ok=True)
         self.temp = tempfile.TemporaryDirectory(dir="/tmp/opencode", prefix="assist-launcher-")
         self.addCleanup(self.temp.cleanup)
         self.catalog = Catalog(Path(self.temp.name) / "catalog.sqlite3")

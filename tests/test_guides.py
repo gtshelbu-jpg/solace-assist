@@ -14,6 +14,7 @@ from solace_assist.interfaces.cli import show_text
 
 class GuideTests(unittest.TestCase):
     def setUp(self):
+        Path("/tmp/opencode").mkdir(exist_ok=True)
         self.temp = tempfile.TemporaryDirectory(dir="/tmp/opencode")
         self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name) / "catalog.sqlite3"

@@ -28,6 +28,9 @@ def until(session, marker, timeout=5):
 
 @unittest.skipUnless(shutil.which("bash"), "Bash adapter integration requires Bash")
 class HelperBashTests(unittest.TestCase):
+    def setUp(self):
+        Path("/tmp/opencode").mkdir(exist_ok=True)
+
     def test_real_readline_context_and_insertion_require_keys_and_user_enter(self):
         with tempfile.TemporaryDirectory(dir="/tmp/opencode", prefix="assist-bash-helper-") as temp:
             root = Path(temp)

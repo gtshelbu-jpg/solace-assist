@@ -20,6 +20,7 @@ except ImportError:
 @unittest.skipUnless(HAS_TEXTUAL, "Optional TUI dependency required")
 class BuilderTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        Path("/tmp/opencode").mkdir(exist_ok=True)
         self.temp = tempfile.TemporaryDirectory(dir="/tmp/opencode", prefix="assist-builder-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)

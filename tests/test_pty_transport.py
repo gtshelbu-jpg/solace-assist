@@ -27,6 +27,9 @@ def until(session, marker, timeout=3):
 
 @unittest.skipUnless(os.name == "posix", "PTY transport is POSIX-only")
 class PTYTests(unittest.TestCase):
+    def setUp(self):
+        Path("/tmp/opencode").mkdir(exist_ok=True)
+
     def test_child_has_real_terminal_and_requested_dimensions(self):
         code = "import os,fcntl,termios,struct; print('TTY',os.isatty(0),os.isatty(1),struct.unpack('HHHH',fcntl.ioctl(0,termios.TIOCGWINSZ,b'\\0'*8))[:2],flush=True)"
         with PTYSession([sys.executable, "-c", code], rows=31, columns=109) as session:
