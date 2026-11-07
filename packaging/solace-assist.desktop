@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Solace Assist
+GenericName=Offline security tool explorer
+Comment=Browse tools, task guides and local package metadata without executing commands
+Exec=sbtools
+TryExec=sbtools
+Terminal=true
+Icon=utilities-terminal
+Categories=System;Utility;
+Keywords=BlackArch;security;tools;catalog;offline;
+StartupNotify=false

@@ -7,7 +7,9 @@ Elephant, a particular terminal emulator, an AI model or a network service.
 **Alpha software, not a released distribution package.** The PTY shell, command
 templates, package installation actions and Elephant integration are future
 milestones. `sbtools shell` is deliberately not implemented rather than pretending
-a text widget is a real shell. No shell startup file or desktop shortcut changes.
+a text widget is a real shell. No shell startup file or keyboard shortcut changes.
+The native Arch package adds a **Solace Assist** application-menu entry that opens
+the real offline explorer in a terminal; it does not launch a security tool.
 
 ## Run locally
 
