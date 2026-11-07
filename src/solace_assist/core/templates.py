@@ -66,14 +66,13 @@ def render_argv(argv, shell):
 
 
 def preview(template_id, arguments, shell="generic", authorized=False):
+    # Legacy callers may still pass authorized; previews need no acknowledgment.
     if template_id not in TEMPLATES:
         raise ValueError("Unknown reviewed template")
     template = TEMPLATES[template_id]
     if set(arguments) != set(template["arguments"]):
         raise ValueError("Supply exactly these arguments: " + ", ".join(template["arguments"]))
     values = {key: argument_value(kind, arguments[key]) for key, kind in template["arguments"].items()}
-    if template["network"] and not authorized:
-        raise ValueError("This preview describes active network probes; explicitly confirm target authorization")
     if template_id == "readelf-header":
         argv = ["readelf", "-h", values["file"]]
     elif template_id == "readelf-symbols":

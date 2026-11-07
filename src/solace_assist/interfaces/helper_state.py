@@ -68,8 +68,8 @@ def queue(path, template_id, arguments, authorized=False):
     ready = read(path, "ready.json")
     if not ready or ready.get("shell") != "bash":
         raise ValueError("Command staging needs the session's Bash Readline adapter; other shells are read-only")
-    result = preview(template_id, arguments, "bash", authorized)
-    write(path, "pending.json", {"template": template_id, "arguments": arguments, "authorized": bool(authorized)})
+    result = preview(template_id, arguments, "bash")
+    write(path, "pending.json", {"template": template_id, "arguments": arguments})
     return result
 
 
@@ -77,9 +77,11 @@ def consume(path):
     pending = read(path, "pending.json")
     if pending is None:
         return None
-    if not isinstance(pending, dict) or set(pending) != {"template", "arguments", "authorized"} or type(pending["authorized"]) is not bool:
+    if set(pending) not in ({"template", "arguments"}, {"template", "arguments", "authorized"}):
         raise ValueError("Invalid staged preview")
-    result = preview(pending["template"], pending["arguments"], "bash", pending["authorized"])
+    if "authorized" in pending and type(pending["authorized"]) is not bool:
+        raise ValueError("Invalid legacy staged preview")
+    result = preview(pending["template"], pending["arguments"], "bash")
     command = result["command"]
     # Defense in depth at the transport boundary: never return Enter/escapes.
     if not command or any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in command):

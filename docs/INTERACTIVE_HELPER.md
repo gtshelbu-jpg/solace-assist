@@ -18,7 +18,8 @@ Terminal output, command history, passwords and program input are not scraped.
 
 ## Deliberate insertion, separate from execution
 
-Generating a preview is read-only. Staging is a separate button and writes typed
+Generating a preview with Enter is read-only. Ctrl+Enter (or Stage for shell)
+validates the current fields and writes typed
 template arguments, not an arbitrary executable action. The Bash insertion widget
 is another explicit action: Ctrl+X then Ctrl+I while Readline owns an empty prompt.
 It refuses nonempty buffers, revalidates the reviewed template and arguments,
@@ -40,8 +41,8 @@ commands they explicitly execute; Assist does not rewrite that preference.
   expansions or grammar semantics. Context is a documentation hint, not an audit
   or assertion that a command is safe. No command output is interpreted.
 - Template coverage is intentionally limited to reviewed guides; imported package
-  metadata is not invented command knowledge. Network templates require explicit
-  authorization and bounded scope, but authorization is still the user's duty.
+  metadata is not invented command knowledge. Network templates take explicit
+  targets and bounded ports, without acknowledgment dialogs or flags.
 - Context and pending files use owned 0700 directories/0600 regular files, reject
   symlink/nonregular reads, bound sizes and get removed on normal teardown. This
   is same-user IPC, not a security boundary against malicious code under that user.

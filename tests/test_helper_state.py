@@ -58,6 +58,15 @@ class HelperStateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             helper_state.read(self.root, "ready.json")
 
+    def test_network_staging_needs_no_ack_and_accepts_legacy_recipes(self):
+        helper_state.write(self.root, "ready.json", {"shell": "bash"})
+        arguments = {"target": "192.0.2.10", "ports": "22,443"}
+        helper_state.queue(self.root, "nmap-services", arguments)
+        self.assertNotIn("authorized", helper_state.read(self.root, "pending.json"))
+        self.assertEqual(helper_state.consume(self.root), "nmap -sV -p 22,443 192.0.2.10")
+        helper_state.write(self.root, "pending.json", {"template": "nmap-services", "arguments": arguments, "authorized": False})
+        self.assertEqual(helper_state.consume(self.root), "nmap -sV -p 22,443 192.0.2.10")
+
     def test_shell_selection_preserved_and_other_grammars_are_read_only(self):
         for executable, capable in (("/bin/bash", True), ("/bin/zsh", False), ("/bin/fish", False), ("/bin/unknown", False)):
             with self.subTest(shell=executable), patch("shutil.which", return_value=executable):

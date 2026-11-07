@@ -3,9 +3,10 @@
 import json
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Checkbox, Input, Label, OptionList, Select, Static
+from textual.widgets import Button, Input, Label, OptionList, Select, Static
 
 from solace_assist.core.tasks import TASKS
 from solace_assist.core.templates import TEMPLATES, list_templates, preview
@@ -49,7 +50,8 @@ class CommandBuilder(ModalScreen):
     #builder-actions Button { margin-right: 1; }
     #builder-description { height: auto; margin: 1 0; }
     """
-    BINDINGS = [("escape", "close", "Close")]
+    BINDINGS = [("escape", "close", "Close"),
+                Binding("ctrl+enter", "stage", "Stage", priority=True)]
 
     def __init__(self, tool=None, template_id=None, helper_session=None, **kwargs):
         super().__init__(**kwargs)
@@ -70,10 +72,9 @@ class CommandBuilder(ModalScreen):
             yield Static("", id="builder-description", markup=False)
             with VerticalScroll(id="builder-fields"):
                 pass
-            yield Checkbox("I am authorized to probe the explicit network target", id="builder-authorized")
-            yield Static("Fill in the arguments, then generate a preview. No flags or targets are guessed.", id="builder-preview", markup=False)
+            yield Static("Enter: preview · Ctrl+Enter: stage · Esc: close", id="builder-preview", markup=False)
             with Horizontal(id="builder-actions"):
-                yield Button("Generate preview", id="builder-generate", variant="primary")
+                yield Button("Preview", id="builder-generate", variant="primary")
                 yield Button("Stage for shell", id="builder-stage", disabled=True)
                 yield Button("Close", id="builder-close")
 
@@ -91,12 +92,10 @@ class CommandBuilder(ModalScreen):
                         "port-list": "Explicit ports, e.g. 22,80,443 — no ranges or extra flags"}
         for name, kind in template["arguments"].items():
             await fields.mount(Label(name + " — " + descriptions[kind]), Input(id="argument-" + name))
-        self.query_one("#builder-authorized", Checkbox).display = template["network"]
-        self.query_one("#builder-authorized", Checkbox).value = False
         self.query_one("#builder-description", Static).update(template["description"] +
-            "\n" + template["options"] +
-            "\nChoose a shell explicitly, or keep structured arguments. Only this helper session's Bash adapter can insert a Bash preview, at your explicit keypress.")
-        self.query_one("#builder-preview", Static).update("Nothing generated or executed.")
+            "\n" + template["options"])
+        self.query_one("#builder-preview", Static).update("Enter: preview · Ctrl+Enter: stage · Esc: close")
+        fields.query(Input).first().focus()
 
     async def on_select_changed(self, event):
         if event.select.id == "builder-template" and event.value in TEMPLATES and event.value != self.template_id:
@@ -113,28 +112,43 @@ class CommandBuilder(ModalScreen):
     def on_input_changed(self, event):
         self.invalidate()
 
-    def on_checkbox_changed(self, event):
-        self.invalidate()
+    def on_input_submitted(self, event):
+        event.stop()
+        self.action_preview()
 
     def on_button_pressed(self, event):
+        event.stop()
+        if event.button.id == "builder-close":
+            self.dismiss(None)
+        elif event.button.id == "builder-generate":
+            self.action_preview()
+        elif event.button.id == "builder-stage":
+            self.action_stage()
+
+    def action_preview(self):
         try:
-            if event.button.id == "builder-close":
-                self.dismiss(None)
-            elif event.button.id == "builder-generate":
-                arguments = {name: self.query_one("#argument-" + name, Input).value for name in TEMPLATES[self.template_id]["arguments"]}
-                authorized = self.query_one("#builder-authorized", Checkbox).value
-                result = preview(self.template_id, arguments, self.render_shell, authorized)
-                self.generated = (self.template_id, arguments, authorized)
-                ready = helper_state.read(self.helper_session, "ready.json") if self.helper_session else None
-                can_stage = self.render_shell == "bash" and ready and ready.get("shell") == "bash"
-                instruction = ("A staged preview still requires Ctrl+X then Ctrl+I at an empty Bash prompt, followed by your own Enter."
-                               if can_stage else "Read-only preview for the chosen grammar; no command insertion is available here.")
-                self.query_one("#builder-preview", Static).update((result["command"] or json.dumps(result["argv"])) + "\n\n" + result["caution"] +
-                    "\n" + instruction)
-                self.query_one("#builder-stage", Button).disabled = not can_stage
-            elif event.button.id == "builder-stage" and self.generated and self.helper_session:
+            arguments = {name: self.query_one("#argument-" + name, Input).value for name in TEMPLATES[self.template_id]["arguments"]}
+            result = preview(self.template_id, arguments, self.render_shell)
+            self.generated = (self.template_id, arguments)
+            ready = helper_state.read(self.helper_session, "ready.json") if self.helper_session else None
+            can_stage = self.render_shell == "bash" and ready and ready.get("shell") == "bash"
+            self.query_one("#builder-preview", Static).update((result["command"] or json.dumps(result["argv"])) +
+                ("\nCtrl+Enter: stage for Bash (does not run)." if can_stage else "\nRead-only preview."))
+            self.query_one("#builder-stage", Button).disabled = not can_stage
+            return True
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            self.invalidate()
+            self.query_one("#builder-preview", Static).update(str(error))
+            return False
+
+    def action_stage(self):
+        # Rebuild from current fields so a shortcut cannot stage a stale preview.
+        if not self.action_preview() or self.query_one("#builder-stage", Button).disabled:
+            return
+        try:
+            if self.generated and self.helper_session:
                 helper_state.queue(self.helper_session, *self.generated)
-                self.query_one("#builder-preview", Static).update("Staged, NOT inserted or run.\nSwitch to the shell pane (Ctrl+B, Left), leave the prompt empty, then press Ctrl+X followed by Ctrl+I. Review and press Enter yourself.\nExisting nonempty commands are never overwritten.")
+                self.query_one("#builder-preview", Static).update("Staged. Ctrl+B, Left → empty prompt → Ctrl+X Ctrl+I to insert.\nYour Enter runs it; existing input is never overwritten.")
                 self.query_one("#builder-stage", Button).disabled = True
         except (ValueError, OSError, KeyError, TypeError) as error:
             self.invalidate()

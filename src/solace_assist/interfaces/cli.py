@@ -62,7 +62,7 @@ def parser():
     p.add_argument("template")
     p.add_argument("--arg", action="append", default=[], metavar="NAME=VALUE")
     p.add_argument("--shell", choices=["bash", "zsh", "sh", "fish", "generic"], default="generic")
-    p.add_argument("--authorized", action="store_true", help="Confirm authorization for the explicit network target")
+    p.add_argument("--authorized", action="store_true", help=argparse.SUPPRESS)  # Legacy no-op.
     p.add_argument("--json", action="store_true")
     p = commands.add_parser("shell", help="Opt-in real shell + interactive helper prototype; never auto-submit commands")
     p.add_argument("--shell", help="Explicit shell executable; default preserves your selected shell")
@@ -143,7 +143,7 @@ def main(argv=None):
                 if key in arguments:
                     raise ValueError("Duplicate template argument: " + key)
                 arguments[key] = value
-            result = preview(args.template, arguments, args.shell, args.authorized)
+            result = preview(args.template, arguments, args.shell)
             print(json.dumps(result, indent=2) if args.json else (result["command"] or json.dumps(result["argv"])) + "\n" + result["caution"])
         elif args.command in {"search", "category", "installed"}:
             if args.command == "category" and args.name is None:

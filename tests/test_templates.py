@@ -26,11 +26,9 @@ class TemplateTests(unittest.TestCase):
             self.assertEqual(result["argv"][-1], "./" + value)
             self.assertNotIn("\n", result["command"])
 
-    def test_network_preview_requires_authorization_and_single_explicit_ip(self):
+    def test_network_preview_needs_only_single_explicit_ip_and_ports(self):
         arguments = {"target": "192.0.2.10", "ports": "22,80,443"}
-        with self.assertRaisesRegex(ValueError, "authorization"):
-            preview("nmap-services", arguments)
-        result = preview("nmap-services", arguments, "bash", authorized=True)
+        result = preview("nmap-services", arguments, "bash")
         self.assertEqual(result["argv"], ["nmap", "-sV", "-p", "22,80,443", "192.0.2.10"])
         self.assertIn("-6", preview("nmap-services", {**arguments, "target": "2001:db8::1"}, authorized=True)["argv"])
         for bad in ("192.0.2.0/24", "--script", "host; command", "example.com"):

@@ -62,6 +62,9 @@ class CLITests(unittest.TestCase):
         preview = json.loads(result.stdout)
         self.assertEqual(preview["argv"], ["readelf", "-h", "a sample.elf"])
         self.assertFalse(preview["execution"])
+        result = self.command("preview", "nmap-services", "--arg", "target=192.0.2.10", "--arg", "ports=22,443", "--json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(json.loads(result.stdout)["execution"])
         self.assertEqual(self.command("preview", "readelf-header", "--arg", "file=a", "--arg", "file=b").returncode, 1)
 
 

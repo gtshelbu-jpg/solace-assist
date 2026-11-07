@@ -37,19 +37,28 @@ class BuilderTests(unittest.IsolatedAsyncioTestCase):
                 await pilot.press("ctrl+p")
                 await pilot.pause(.3)
                 self.assertIsInstance(app.screen, CommandBuilder)
+                self.assertEqual(app.screen.focused.id, "argument-file")
                 app.screen.query_one("#argument-file", Input).value = "a sample.elf"
                 await pilot.pause(.2)
                 self.assertFalse((ipc / "pending.json").exists())
-                await pilot.click("#builder-generate")
+                await pilot.press("enter")
                 await pilot.pause(.2)
                 self.assertFalse(app.screen.query_one("#builder-stage", Button).disabled)
                 self.assertFalse((ipc / "pending.json").exists(), "Preview must not stage automatically")
-                await pilot.click("#builder-stage")
+                await pilot.press("ctrl+enter")
                 await pilot.pause(.2)
                 self.assertEqual(helper_state.consume(ipc), "readelf -h 'a sample.elf'")
                 app.screen.query_one("#argument-file", Input).value = "different.elf"
                 await pilot.pause(.2)
                 self.assertTrue(app.screen.query_one("#builder-stage", Button).disabled)
+                await pilot.press("ctrl+enter")
+                await pilot.pause(.2)
+                self.assertEqual(helper_state.consume(ipc), "readelf -h different.elf")
+                app.screen.query_one("#argument-file", Input).value = ""
+                await pilot.pause(.2)
+                await pilot.press("ctrl+enter")
+                await pilot.pause(.2)
+                self.assertFalse((ipc / "pending.json").exists())
 
     async def test_task_picker_and_all_metadata_toggle(self):
         app = ToolExplorer(self.catalog)
@@ -79,7 +88,7 @@ class BuilderTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("private-capture", (ipc / "context.json").read_text())
         app.refresh_context()  # A queued timer after unmount must be harmless.
 
-    async def test_unknown_shell_preview_is_structured_and_network_requires_authorization(self):
+    async def test_unknown_shell_network_preview_needs_no_acknowledgment(self):
         app = ToolExplorer(self.catalog)
         async with app.run_test(size=(140, 55)) as pilot:
             await pilot.pause(.3)
@@ -87,13 +96,10 @@ class BuilderTests(unittest.IsolatedAsyncioTestCase):
             await pilot.pause(.3)
             screen = app.screen
             self.assertEqual(screen.render_shell, "generic")
+            self.assertEqual(screen.focused.id, "argument-target")
+            self.assertFalse(screen.query("#builder-authorized"))
             screen.query_one("#argument-target", Input).value = "192.0.2.10"
             screen.query_one("#argument-ports", Input).value = "22,443"
-            await pilot.pause(.2)
-            await pilot.click("#builder-generate")
-            await pilot.pause(.2)
-            self.assertIsNone(screen.generated)
-            screen.query_one("#builder-authorized", Checkbox).value = True
             await pilot.pause(.2)
             await pilot.click("#builder-generate")
             await pilot.pause(.2)

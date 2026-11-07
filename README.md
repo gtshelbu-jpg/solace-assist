@@ -104,8 +104,8 @@ control characters are rejected. The default `generic` mode returns structured
 arguments, not guessed shell syntax. Bash/POSIX, Zsh and Fish renderers are
 separate; tests round-trip literal arguments through whichever shells are
 available. This is not validation of cross-shell editable-buffer adapters.
-The network template additionally requires `--authorized`, a single IP (no subnet
-or hostname expansion), and explicit bounded ports. Read the linked bundled guide
+The network template takes a single IP (no subnet or hostname expansion) and
+explicit bounded ports, with no acknowledgment checkbox or flag. Read the bundled guide
 and check the actual installed version before manually using any preview.
 
 ## Personal knowledge
@@ -165,8 +165,9 @@ offline helper, not a simulated shell widget.
    shows the matching guide. Only a conservative executable hint is shared; the
    command's arguments, credentials and terminal output are not scraped or saved.
 2. Switch right with **Ctrl+B, Right**. Use **Ctrl+T** for a task or **Ctrl+P**
-   to build a reviewed command. Fill the form, then **Generate preview**.
-3. Optionally press **Stage for shell**. Nothing is inserted yet.
+   to build a reviewed command. The first argument is focused; **Enter** previews.
+3. **Ctrl+Enter** stages directly from the current fields (or use **Stage for shell**).
+   Nothing is inserted yet. No extra acknowledgment is required.
 4. Switch left with **Ctrl+B, Left**. Clear any existing input yourself. Press
    **Ctrl+X, then Ctrl+I** at the empty prompt. The Bash adapter inserts the
    revalidated single-line preview, **without Enter**. Nonempty input is never
