@@ -80,12 +80,14 @@ class ToolExplorer(App):
         Binding("escape", "back", "Back", priority=True),
     ]
 
-    def __init__(self, catalog, palette_path=None, **kwargs):
+    def __init__(self, catalog, palette_path=None, initial_tool=None, initial_query="", **kwargs):
         super().__init__(**kwargs)
         self.palette_path = system_palette_path() if palette_path is None else palette_path
         self._palette_name = None
         self.refresh_system_theme()
         self.catalog = catalog
+        self.opening_tool = initial_tool
+        self.initial_query = initial_query
         self.category = None
         self.category_values = {}
         self.selected_id = None
@@ -96,7 +98,7 @@ class ToolExplorer(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Input(placeholder="Search a task: enumerate SMB, analyze firmware, decode radio signals…", id="search")
+        yield Input(value=self.initial_query, placeholder="Search a task: enumerate SMB, analyze firmware, decode radio signals…", id="search")
         with Horizontal(id="filters"):
             yield Checkbox("Installed snapshot only", id="installed")
             yield Checkbox("Favorites only", id="favorites")
@@ -183,7 +185,17 @@ class ToolExplorer(App):
             table.add_row(Text(("* " if row["favorite"] else "") + row["name"]),
                           Text(status), Text(row["purpose"].replace("\n", " ")), key=row["id"])
         self.query_one("#status", Static).update(f"{len(rows)} results (maximum 250) • no automatic execution • Ctrl+R reads local package caches")
-        if rows:
+        if self.opening_tool:
+            tool_id, self.opening_tool = self.opening_tool, None
+            for index, row in enumerate(rows):
+                if row["id"] == tool_id:
+                    table.move_cursor(row=index)
+                    break
+            self.request_detail(tool_id)
+            if self.has_class("narrow"):
+                self.add_class("detail-open")
+                self.query_one("#details", VerticalScroll).focus()
+        elif rows:
             self.request_detail(rows[0]["id"])
         else:
             self.selected_id = None

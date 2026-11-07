@@ -52,6 +52,18 @@ def parser():
     p.add_argument("tool"); p.add_argument("tag"); p.add_argument("--remove", action="store_true")
     p = commands.add_parser("info", help="Catalog counts and source provenance")
     p.add_argument("--json", action="store_true")
+    p = commands.add_parser("browse", help="Open one tool's documentation in the explorer; never execute it")
+    p.add_argument("tool")
+    p = commands.add_parser("launch", help="Optional Walker task-search launcher; selection opens documentation")
+    p.add_argument("query", nargs="*")
+    p = commands.add_parser("templates", help="List reviewed typed command previews; no execution")
+    p.add_argument("--tool"); p.add_argument("--json", action="store_true")
+    p = commands.add_parser("preview", help="Preview a reviewed template; never execute, insert or submit it")
+    p.add_argument("template")
+    p.add_argument("--arg", action="append", default=[], metavar="NAME=VALUE")
+    p.add_argument("--shell", choices=["bash", "zsh", "sh", "fish", "generic"], default="generic")
+    p.add_argument("--authorized", action="store_true", help="Confirm authorization for the explicit network target")
+    p.add_argument("--json", action="store_true")
     return root
 
 
@@ -97,13 +109,34 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         catalog = Catalog(args.db)
-        if args.command is None:
+        if args.command is None or args.command == "browse":
+            tool = catalog.show(args.tool) if args.command == "browse" else None
             try:
                 from solace_assist.interfaces.tui import ToolExplorer
             except ImportError:
                 print("The TUI needs the optional Textual dependency. Install solace-assist[tui] in a virtual environment, or use sbtools search/show/sync.", file=sys.stderr)
                 return 2
-            ToolExplorer(catalog).run()
+            ToolExplorer(catalog, initial_tool=tool["id"] if tool else None,
+                         initial_query=tool["name"] if tool else "").run()
+        elif args.command == "launch":
+            from solace_assist.interfaces.launcher import launch
+            return launch(catalog, " ".join(args.query))
+        elif args.command == "templates":
+            from solace_assist.core.templates import list_templates
+            rows = list_templates(args.tool)
+            print(json.dumps(rows, indent=2) if args.json else "\n".join(f"{row['id']}: {row['description']} ({', '.join(row['arguments'])})" for row in rows))
+        elif args.command == "preview":
+            from solace_assist.core.templates import preview
+            arguments = {}
+            for argument in args.arg:
+                if "=" not in argument:
+                    raise ValueError("Template arguments use NAME=VALUE")
+                key, value = argument.split("=", 1)
+                if key in arguments:
+                    raise ValueError("Duplicate template argument: " + key)
+                arguments[key] = value
+            result = preview(args.template, arguments, args.shell, args.authorized)
+            print(json.dumps(result, indent=2) if args.json else (result["command"] or json.dumps(result["argv"])) + "\n" + result["caution"])
         elif args.command in {"search", "category", "installed"}:
             if args.command == "category" and args.name is None:
                 categories = catalog.categories()

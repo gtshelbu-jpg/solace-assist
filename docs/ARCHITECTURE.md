@@ -20,3 +20,11 @@ uses user-only permissions; no long-lived service is required for catalog browsi
 
 Arch packaging may expose separate optional TUI/Elephant components from this one
 source project. No Python/Go plugin ABI or desktop dependency belongs in the core.
+
+The initial Walker adapter is `interfaces/launcher.py`: a task prompt, shared-core
+ranked search, explicit offered-result selection, and an argument-vector launch of
+`sbtools browse`. It never launches the selected executable or interpolates shell
+commands. `core/templates.py` offers typed, nonexecuting previews with separate
+shell renderers and a structured-only generic mode. `interfaces/pty_transport.py`
+is a POSIX transport foundation only; editable-buffer capability is explicitly
+false. No public assisted-shell command is enabled by these foundations.

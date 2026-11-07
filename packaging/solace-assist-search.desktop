@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Solace Assist Search
+GenericName=Security task search
+Comment=Find tools by task and open their documentation; never execute tools
+Exec=sbtools launch
+TryExec=walker
+Terminal=false
+Icon=system-search
+Categories=System;Utility;
+Keywords=BlackArch;security;task;search;tools;
+StartupNotify=false

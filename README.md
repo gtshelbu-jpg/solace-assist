@@ -4,9 +4,9 @@ An independent security-tool catalog with one SQLite FTS5 database shared by a
 CLI and keyboard-driven Textual TUI. It runs without Solace, BlackArch, Hyprland,
 Elephant, a particular terminal emulator, an AI model or a network service.
 
-**Alpha software, not a released distribution package.** The PTY shell, command
-templates, package installation actions and Elephant integration are future
-milestones. `sbtools shell` is deliberately not implemented rather than pretending
+**Alpha software, not a production binary distribution.** The assisted shell,
+package installation actions and an Elephant provider remain future milestones.
+`sbtools shell` is deliberately not implemented rather than pretending
 a text widget is a real shell. No shell startup file or keyboard shortcut changes.
 The native Arch package adds a **Solace Assist** application-menu entry that opens
 the real offline explorer in a terminal; it does not launch a security tool.
@@ -74,6 +74,37 @@ Offline browsing uses the last imported snapshot. Installed status can be stale;
 `info` reports the last installed refresh time. On non-Arch systems the bundled
 catalog and explicit metadata imports work, but automatic installed detection is
 currently Pacman-only. Additional distro adapters are not silently simulated.
+
+## Optional task-search launcher
+
+On a Walker desktop, open **Solace Assist Search** from the application menu or
+run `sbtools launch`. Describe a task, choose a ranked result, and its documentation
+opens in the terminal explorer. `sbtools launch enumerate smb` skips the initial
+task prompt. The adapter calls the same catalog search as the CLI/TUI, not a
+separate launcher database. It requires Walker and `xdg-terminal-exec` only when
+invoked; ordinary standalone browsing has neither dependency. Normal application
+launcher and terminal shortcuts are not replaced. No Elephant configuration is
+modified. Cancellation does nothing; custom result text is never executed.
+
+## Reviewed command previews
+
+Four initial templates cover readelf headers/symbols, offline tcpdump capture-file
+inspection, and Nmap service probes on one explicitly authorized IP/port list:
+
+```bash
+sbtools templates
+sbtools preview readelf-header --arg 'file=a sample.elf' --shell bash
+sbtools preview tcpdump-file --arg 'file=existing.pcap' --json
+```
+
+Previews never execute, insert, copy or submit commands. Values are typed and
+control characters are rejected. The default `generic` mode returns structured
+arguments, not guessed shell syntax. Bash/POSIX, Zsh and Fish renderers are
+separate; tests round-trip literal arguments through whichever shells are
+available. This is not validation of cross-shell editable-buffer adapters.
+The network template additionally requires `--authorized`, a single IP (no subnet
+or hostname expansion), and explicit bounded ports. Read the linked bundled guide
+and check the actual installed version before manually using any preview.
 
 ## Personal knowledge
 
@@ -150,8 +181,13 @@ Fish and generic/unknown-shell fallback need explicit integration tests. An
 unsupported grammar gets documentation/manual context, not guessed quoting or
 reconstructed buffers from terminal output. Commands must never auto-submit.
 
-Next: more source-checked guides and structured templates, then a thin optional Elephant adapter;
-real assisted-shell mode remains its own engineering milestone. Black does not
+An internal POSIX PTY transport now has real-TTY, resize, explicit-input, Ctrl+C,
+exit-status and cleanup tests, including a test that input is not submitted until
+an explicit Enter. It does not emulate a terminal, infer an editable buffer from
+output or provide command insertion. It is not exposed as `sbtools shell` yet.
+
+Next: richer source-checked templates, a thin optional Elephant provider, and
+shell editing adapters; real assisted-shell mode remains its own milestone. Black does not
 depend on Assist to boot. Original code and documentation are MIT licensed; see
 LICENSE and NOTICE for third-party boundaries. Native package signing and binary
 release validation remain separate milestones.

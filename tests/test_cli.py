@@ -52,5 +52,15 @@ class CLITests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {})
 
+    def test_reviewed_template_commands_are_preview_only(self):
+        rows = json.loads(self.command("templates", "--tool", "readelf", "--json").stdout)
+        self.assertEqual(len(rows), 2)
+        result = self.command("preview", "readelf-header", "--arg", "file=a sample.elf", "--shell", "bash", "--json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        preview = json.loads(result.stdout)
+        self.assertEqual(preview["argv"], ["readelf", "-h", "a sample.elf"])
+        self.assertFalse(preview["execution"])
+        self.assertEqual(self.command("preview", "readelf-header", "--arg", "file=a", "--arg", "file=b").returncode, 1)
+
 
 if __name__ == "__main__": unittest.main()

@@ -102,5 +102,14 @@ class TUITests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(app.current_theme.background, "#101514")
             self.assertEqual(app.query_one("#results", DataTable).row_count, 14)
 
+    async def test_launcher_detail_opens_requested_tool_on_narrow_screen(self):
+        app = ToolExplorer(self.catalog, initial_tool="smbclient", initial_query="smbclient")
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause(0.5)
+            self.assertEqual(app.selected_id, "smbclient")
+            self.assertTrue(app.has_class("detail-open"))
+            await pilot.press("escape")
+            self.assertFalse(app.has_class("detail-open"))
+
 
 if __name__ == "__main__": unittest.main()
