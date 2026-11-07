@@ -1,18 +1,21 @@
 """Optional Textual interface. Catalog operations are shared with the CLI."""
 
 import json
+import hashlib
 import re
 
 from rich.text import Text
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.theme import Theme
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Checkbox, DataTable, Footer, Header, Input, Markdown, OptionList, Static
 from textual.widgets.option_list import Option
 
 from solace_assist.core.catalog import text
 from solace_assist.sources.pacman import sync_local
+from solace_assist.interfaces.palette import DEFAULT_PALETTE, load_palette, system_palette_path
 
 
 def escaped(value, limit=8192):
@@ -54,14 +57,14 @@ class ToolExplorer(App):
     TITLE = "Solace Assist"
     SUB_TITLE = "Offline tool discovery — no command execution"
     CSS = """
-    Screen { background: #101514; color: #d5dedb; }
+    Screen { background: $background; color: $foreground; }
     #search { margin: 0 1; }
     #filters { height: 3; }
-    #status { height: 1; margin: 0 1; color: #94b8ad; }
+    #status { height: 1; margin: 0 1; color: $accent; }
     #body { height: 1fr; }
-    #categories { width: 27; height: 1fr; border: solid #364b42; }
-    #results { width: 2fr; height: 1fr; min-width: 25; border: solid #364b42; }
-    #details { width: 3fr; min-width: 25; padding: 0 1; border: solid #364b42; }
+    #categories { width: 27; height: 1fr; border: solid $primary-muted; }
+    #results { width: 2fr; height: 1fr; min-width: 25; border: solid $primary-muted; }
+    #details { width: 3fr; min-width: 25; padding: 0 1; border: solid $primary-muted; }
     .narrow #categories { width: 19; }
     .narrow #details { display: none; }
     .narrow.detail-open #results { display: none; }
@@ -77,8 +80,11 @@ class ToolExplorer(App):
         Binding("escape", "back", "Back", priority=True),
     ]
 
-    def __init__(self, catalog, **kwargs):
+    def __init__(self, catalog, palette_path=None, **kwargs):
         super().__init__(**kwargs)
+        self.palette_path = system_palette_path() if palette_path is None else palette_path
+        self._palette_name = None
+        self.refresh_system_theme()
         self.catalog = catalog
         self.category = None
         self.category_values = {}
@@ -103,10 +109,28 @@ class ToolExplorer(App):
         yield Footer()
 
     def on_mount(self):
+        self.set_interval(1.0, self.refresh_system_theme)
         self.query_one("#results", DataTable).add_columns("Tool", "Status", "Purpose")
         self.refresh_categories()
         self.query_one("#search", Input).focus()
         self.request_search()
+
+    def refresh_system_theme(self):
+        palette = load_palette(self.palette_path)
+        if palette is None:
+            if self._palette_name is not None:
+                return  # Keep the last good palette during partial/invalid writes.
+            palette = DEFAULT_PALETTE
+        signature = hashlib.sha256(json.dumps(palette, sort_keys=True).encode()).hexdigest()[:16]
+        name = "assist-" + signature
+        if name == self._palette_name:
+            return
+        previous = self._palette_name
+        self.register_theme(Theme(name=name, text_alpha=1.0, **palette))
+        self.theme = name
+        self._palette_name = name
+        if previous is not None:
+            self.unregister_theme(previous)
 
     def on_resize(self, event):
         self.set_class(event.size.width < 110, "narrow")

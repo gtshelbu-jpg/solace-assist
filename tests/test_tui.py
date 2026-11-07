@@ -69,5 +69,38 @@ class TUITests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(app.query_one("#results", DataTable).row_count, 1)
             self.assertEqual(app.selected_id, "binwalk")
 
+    async def test_system_palette_follows_symlink_switch_without_resetting_search(self):
+        root = Path(self.temp.name)
+        current = root / "current"
+        for name, accent in (("black", "#b4a1e8"), ("blue", "#3b6aa5")):
+            folder = root / name
+            folder.mkdir()
+            (folder / "colors.toml").write_text('background = "#101017"\nforeground = "#dddde7"\naccent = "' + accent + '"\n')
+        current.symlink_to(root / "black", target_is_directory=True)
+        app = ToolExplorer(self.catalog, palette_path=current / "colors.toml")
+        with patch("subprocess.run", side_effect=AssertionError("theming must not execute commands")):
+            async with app.run_test(size=(140, 42)) as pilot:
+                await pilot.pause(0.3)
+                self.assertEqual(app.current_theme.primary, "#b4a1e8")
+                self.assertEqual(app.screen.styles.background.hex, "#101017")
+                app.query_one("#search", Input).value = "enumerate smb"
+                await pilot.pause(0.4)
+                current.unlink()
+                current.symlink_to(root / "blue", target_is_directory=True)
+                await pilot.pause(1.2)
+                self.assertEqual(app.current_theme.primary, "#3b6aa5")
+                self.assertEqual(app.query_one("#search", Input).value, "enumerate smb")
+                self.assertIn(app.selected_id, {"smbclient", "smbmap"})
+                (root / "blue/colors.toml").write_text("partially written invalid data")
+                app.refresh_system_theme()
+                self.assertEqual(app.current_theme.primary, "#3b6aa5")
+
+    async def test_standalone_fallback_without_solace(self):
+        app = ToolExplorer(self.catalog, palette_path=Path(self.temp.name) / "missing.toml")
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause(0.2)
+            self.assertEqual(app.current_theme.background, "#101514")
+            self.assertEqual(app.query_one("#results", DataTable).row_count, 14)
+
 
 if __name__ == "__main__": unittest.main()

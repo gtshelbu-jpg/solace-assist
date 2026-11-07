@@ -22,8 +22,8 @@ python -m venv .venv
 .venv/bin/sbtools
 ```
 
-For CLI only, install `-e .` without the optional `tui` extra. Textual 8.2.8 was
-used for the initial UI validation; older/newer untested versions may differ.
+For CLI only, install `-e .` without the optional `tui` extra. The TUI requires
+Textual 8.2.8 or newer; 8.2.8 is the currently validated version.
 
 ```bash
 .venv/bin/sbtools search "enumerate smb"
@@ -110,6 +110,19 @@ Search is bounded/debounced, and worker results are generation-checked so stale
 queries do not replace newer results. Narrow 80-column terminals have a separate
 detail view; larger terminals show categories/results/details side by side.
 Notes/tags can be edited through the CLI and are visible in tool details.
+
+### Appearance
+
+On Solace, the explorer reads the active `solace/current/theme/colors.toml` under
+`$XDG_CONFIG_HOME` (normally `~/.config`). Background, text, panel and accent colours
+follow that palette, including widget focus/selection and warning/error colours.
+It checks for palette changes once per second without resetting search, focus or
+personal data. Reopening is not required after changing the system theme.
+
+This bridge is optional and read-only: no Solace command is executed or required.
+Without a valid palette, startup uses Assist's standalone dark theme. Invalid or
+partially written updates keep the last good palette. Only validated hex colours
+and light/dark mode are accepted; palette files cannot supply CSS or commands.
 
 ## Architecture and validation
 

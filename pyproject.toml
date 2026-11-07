@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "solace-assist"
-version = "0.1.0a3"
+version = "0.1.0a4"
 description = "Offline security-tool catalog, CLI and terminal explorer"
 requires-python = ">=3.11"
 dependencies = []
@@ -12,7 +12,7 @@ license = "MIT"
 license-files = ["LICENSE", "NOTICE"]
 
 [project.optional-dependencies]
-tui = ["textual>=1"]
+tui = ["textual>=8.2.8"]
 
 [project.scripts]
 sbtools = "solace_assist.interfaces.cli:main"
