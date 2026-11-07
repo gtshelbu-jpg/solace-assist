@@ -27,4 +27,7 @@ ranked search, explicit offered-result selection, and an argument-vector launch 
 commands. `core/templates.py` offers typed, nonexecuting previews with separate
 shell renderers and a structured-only generic mode. `interfaces/pty_transport.py`
 is a POSIX transport foundation only; editable-buffer capability is explicitly
-false. No public assisted-shell command is enabled by these foundations.
+false. The opt-in `sbtools shell` prototype instead delegates real terminal
+rendering/PTYs to an isolated tmux server, with a session-local Bash Readline
+adapter and private typed-preview IPC. Other shells keep read-only capabilities.
+See `INTERACTIVE_HELPER.md` for its deliberately limited editing/safety contract.

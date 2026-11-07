@@ -42,9 +42,11 @@ class CLITests(unittest.TestCase):
         self.assertEqual(self.command("favorite", "nmap", "--remove").returncode, 0)
         self.assertEqual(self.command("note", "nmap", "--clear").returncode, 0)
 
-    def test_missing_tools_and_unimplemented_shell_fail_honestly(self):
+    def test_missing_tools_and_nonterminal_shell_fail_honestly(self):
         self.assertNotEqual(self.command("show", "does-not-exist").returncode, 0)
-        self.assertEqual(self.command("shell").returncode, 2)
+        result = self.command("shell")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("real terminal", result.stderr)
         self.assertEqual(self.command("search", "--limit", "100000").returncode, 1)
 
     def test_sync_empty_local_source_needs_no_network_or_root(self):

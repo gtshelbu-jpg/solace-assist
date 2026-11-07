@@ -242,7 +242,7 @@ class Catalog:
             for tool_id in affected: self._index(db, tool_id)
             db.execute("INSERT OR REPLACE INTO assist_meta VALUES('installed_checked_at',?)", (str(int(time.time())),))
 
-    def search(self, query="", category=None, installed=False, favorites=False, tag=None, limit=100):
+    def search(self, query="", category=None, installed=False, favorites=False, tag=None, limit=100, guided=False):
         if not 1 <= limit <= 1000: raise ValueError("Result limit must be between 1 and 1000")
         expression = search_expression(query)
         conditions, args = [], []
@@ -254,6 +254,7 @@ class Catalog:
         if category: conditions.append("EXISTS(SELECT 1 FROM categories c WHERE c.tool_id=t.id AND c.category=?)"); args.append(category)
         if installed: conditions.append(installed_sql)
         if favorites: conditions.append(favorite_sql)
+        if guided: conditions.append("EXISTS(SELECT 1 FROM guide_provenance gp WHERE gp.tool_id=t.id)")
         if tag: conditions.append("EXISTS(SELECT 1 FROM tags g WHERE g.tool_id=t.id AND g.tag=?)"); args.append(tag.casefold())
         where = " WHERE " + " AND ".join(conditions) if conditions else ""
         order = "CASE WHEN t.origin='curated' THEN 0 ELSE 1 END,bm25(tool_fts,0,8,5,2,4,3,1),t.name" if expression else "favorite DESC,t.name"
@@ -261,9 +262,19 @@ class Catalog:
             rows = db.execute(f"SELECT t.id,t.name,t.purpose,t.documentation_status,t.origin,{installed_sql} AS installed,{available_sql} AS available,{favorite_sql} AS favorite FROM tools t{join}{where} ORDER BY {order} LIMIT ?", [*args, limit]).fetchall()
             return [dict(row) for row in rows]
 
-    def categories(self):
+    def categories(self, guided=False):
         with self.connection() as db:
-            return [(r[0], r[1]) for r in db.execute("SELECT category,count(*) FROM categories GROUP BY category ORDER BY category")]
+            where = " WHERE EXISTS(SELECT 1 FROM guide_provenance gp WHERE gp.tool_id=categories.tool_id)" if guided else ""
+            return [(r[0], r[1]) for r in db.execute("SELECT category,count(*) FROM categories" + where + " GROUP BY category ORDER BY category")]
+
+    def tool_for_executable(self, executable):
+        if not NAME.fullmatch(executable):
+            return None
+        with self.connection() as db:
+            row = db.execute("""SELECT t.id FROM tools t LEFT JOIN tool_executables e ON e.tool_id=t.id
+                WHERE t.id=? OR e.executable=?
+                ORDER BY CASE WHEN t.origin='curated' THEN 0 ELSE 1 END,t.id LIMIT 1""", (executable, executable)).fetchone()
+        return row[0] if row else None
 
     def show(self, tool_id, record_view=False):
         with self.connection() as db:

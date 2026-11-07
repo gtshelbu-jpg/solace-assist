@@ -21,6 +21,11 @@ class PackagingTests(unittest.TestCase):
         self.assertEqual(search["Desktop Entry"]["Exec"], "sbtools launch")
         self.assertEqual(search["Desktop Entry"]["Terminal"], "false")
         self.assertIn('"$pkgdir/usr/share/applications/solace-assist-search.desktop"', recipe)
+        helper = configparser.ConfigParser(interpolation=None)
+        helper.read(ROOT / "packaging/solace-assist-helper.desktop")
+        self.assertEqual(helper["Desktop Entry"]["Exec"], "sbtools shell")
+        self.assertEqual(helper["Desktop Entry"]["Terminal"], "true")
+        self.assertIn('"$pkgdir/usr/share/applications/solace-assist-helper.desktop"', recipe)
 
 
 if __name__ == "__main__":

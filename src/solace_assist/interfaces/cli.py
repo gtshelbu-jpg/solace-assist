@@ -64,6 +64,10 @@ def parser():
     p.add_argument("--shell", choices=["bash", "zsh", "sh", "fish", "generic"], default="generic")
     p.add_argument("--authorized", action="store_true", help="Confirm authorization for the explicit network target")
     p.add_argument("--json", action="store_true")
+    p = commands.add_parser("shell", help="Opt-in real shell + interactive helper prototype; never auto-submit commands")
+    p.add_argument("--shell", help="Explicit shell executable; default preserves your selected shell")
+    p = commands.add_parser("_helper", help=argparse.SUPPRESS)
+    p.add_argument("session", type=Path)
     return root
 
 
@@ -109,7 +113,10 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         catalog = Catalog(args.db)
-        if args.command is None or args.command == "browse":
+        if args.command == "shell":
+            from solace_assist.interfaces.helper_shell import start
+            return start(catalog, args.shell)
+        if args.command is None or args.command in {"browse", "_helper"}:
             tool = catalog.show(args.tool) if args.command == "browse" else None
             try:
                 from solace_assist.interfaces.tui import ToolExplorer
@@ -117,7 +124,8 @@ def main(argv=None):
                 print("The TUI needs the optional Textual dependency. Install solace-assist[tui] in a virtual environment, or use sbtools search/show/sync.", file=sys.stderr)
                 return 2
             ToolExplorer(catalog, initial_tool=tool["id"] if tool else None,
-                         initial_query=tool["name"] if tool else "").run()
+                         initial_query=tool["name"] if tool else "",
+                         helper_session=args.session if args.command == "_helper" else None).run()
         elif args.command == "launch":
             from solace_assist.interfaces.launcher import launch
             return launch(catalog, " ".join(args.query))
@@ -176,6 +184,8 @@ def main(argv=None):
             info = catalog.info()
             print(json.dumps(info, indent=2) if args.json else "\n".join(f"{key}: {value}" for key, value in info.items()))
         return 0
+    except KeyboardInterrupt:
+        return 130
     except (ValueError, KeyError, OSError, sqlite3.Error, tarfile.TarError, subprocess.SubprocessError) as error:
         print("ERROR: " + text(error), file=sys.stderr)
         return 1

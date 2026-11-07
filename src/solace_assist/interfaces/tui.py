@@ -10,12 +10,15 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.theme import Theme
 from textual.containers import Horizontal, VerticalScroll
-from textual.widgets import Checkbox, DataTable, Footer, Header, Input, Markdown, OptionList, Static
+from textual.widgets import Button, Checkbox, DataTable, Footer, Header, Input, Markdown, OptionList, Static
 from textual.widgets.option_list import Option
 
 from solace_assist.core.catalog import text
 from solace_assist.sources.pacman import sync_local
 from solace_assist.interfaces.palette import DEFAULT_PALETTE, load_palette, system_palette_path
+from solace_assist.interfaces.builder import CommandBuilder, TaskPicker
+from solace_assist.core.templates import list_templates
+from solace_assist.interfaces import helper_state
 
 
 def escaped(value, limit=8192):
@@ -29,14 +32,6 @@ def detail_markdown(tool):
              "**Installed snapshot:** " + escaped(", ".join(f"{p['package']} {p['version']}" for p in tool["installed_packages"]) or "not recorded"),
              "**Package mappings:** " + escaped(", ".join(tool["tool_packages"])),
              "**Known tool executables:** " + escaped(", ".join(tool["tool_executables"]) or "not verified")]
-    if tool["packages"]:
-        lines += ["## Package metadata"]
-        for package in tool["packages"]:
-            lines.append(escaped(f"{package['repository']}/{package['name']} {package['version']}"))
-            if package["description"]: lines.append(escaped(package["description"]))
-            dependencies = json.loads(package["dependencies"])
-            if dependencies: lines.append("Dependencies: " + escaped(", ".join(dependencies[:24])))
-            lines.append(escaped(package["provenance"]))
     if tool["description"]: lines += [escaped(tool["description"])]
     guide = tool.get("guide_provenance")
     if guide:
@@ -45,21 +40,33 @@ def detail_markdown(tool):
         lines += ["Source: " + escaped(url) for url in guide["sources"]]
     lines += ["## Documentation"]
     lines.append(tool["documentation"] or "No verified command guide is bundled yet. Use official documentation; no flags or examples are inferred.")
+    templates = list_templates(tool["id"])
+    if templates:
+        lines += ["## Build a reviewed command", "Press **Ctrl+P** (or Build command) to fill in a typed form and preview, never execute:"]
+        lines += ["- " + escaped(row["description"]) for row in templates]
     # Render URLs as text rather than automatically launching external programs.
     if tool["documentation_url"]: lines.append("Official docs: " + escaped(tool["documentation_url"]))
     if tool["url"]: lines.append("Upstream: " + escaped(tool["url"]))
     if tool["tags"]: lines += ["**Personal tags:** " + escaped(", ".join(tool["tags"]))]
     if tool["note"]: lines += ["## Personal note", escaped(tool["note"], 65536)]
+    if tool["packages"]:
+        lines += ["## Package metadata (not a command guide)"]
+        for package in tool["packages"][:8]:
+            lines.append(escaped(f"{package['repository']}/{package['name']} {package['version']} — {package['provenance']}"))
     return "\n\n".join(lines)
 
 
 class ToolExplorer(App):
     TITLE = "Solace Assist"
     SUB_TITLE = "Offline tool discovery — no command execution"
+    COMMAND_PALETTE_BINDING = "ctrl+shift+p"
     CSS = """
     Screen { background: $background; color: $foreground; }
     #search { margin: 0 1; }
     #filters { height: 3; }
+    #actions { height: 3; margin: 0 1; }
+    #actions Button { margin-right: 1; }
+    #helper-status { height: auto; max-height: 4; margin: 0 1; color: $accent; }
     #status { height: 1; margin: 0 1; color: $accent; }
     #body { height: 1fr; }
     #categories { width: 27; height: 1fr; border: solid $primary-muted; }
@@ -77,10 +84,12 @@ class ToolExplorer(App):
         Binding("ctrl+g", "focus_categories", "Categories"),
         Binding("f", "favorite", "Favorite"),
         Binding("ctrl+r", "sync", "Sync local metadata"),
+        Binding("ctrl+t", "tasks", "Tasks"),
+        Binding("ctrl+p", "build", "Build command"),
         Binding("escape", "back", "Back", priority=True),
     ]
 
-    def __init__(self, catalog, palette_path=None, initial_tool=None, initial_query="", **kwargs):
+    def __init__(self, catalog, palette_path=None, initial_tool=None, initial_query="", helper_session=None, **kwargs):
         super().__init__(**kwargs)
         self.palette_path = system_palette_path() if palette_path is None else palette_path
         self._palette_name = None
@@ -88,6 +97,9 @@ class ToolExplorer(App):
         self.catalog = catalog
         self.opening_tool = initial_tool
         self.initial_query = initial_query
+        self.helper_session = helper_session
+        self.context_updated = None
+        self.start_guided = not initial_tool or bool(catalog.show(initial_tool)["guide_provenance"])
         self.category = None
         self.category_values = {}
         self.selected_id = None
@@ -98,8 +110,13 @@ class ToolExplorer(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
+        with Horizontal(id="actions"):
+            yield Button("Start a task", id="tasks")
+            yield Button("Build command", id="build")
+        yield Static("", id="helper-status", markup=False)
         yield Input(value=self.initial_query, placeholder="Search a task: enumerate SMB, analyze firmware, decode radio signals…", id="search")
         with Horizontal(id="filters"):
+            yield Checkbox("Reviewed guides", value=self.start_guided, id="guided")
             yield Checkbox("Installed snapshot only", id="installed")
             yield Checkbox("Favorites only", id="favorites")
         yield Static("Bundled purpose references; Ctrl+R explicitly imports local package metadata.", id="status", markup=False)
@@ -112,6 +129,9 @@ class ToolExplorer(App):
 
     def on_mount(self):
         self.set_interval(1.0, self.refresh_system_theme)
+        if self.helper_session:
+            self.set_interval(0.5, self.refresh_context)
+            self.refresh_context()
         self.query_one("#results", DataTable).add_columns("Tool", "Status", "Purpose")
         self.refresh_categories()
         self.query_one("#search", Input).focus()
@@ -142,7 +162,7 @@ class ToolExplorer(App):
         sidebar.clear_options()
         sidebar.add_option(Option(Text("All categories"), id="all"))
         self.category_values = {"all": None}
-        for index, (name, count) in enumerate(self.catalog.categories()):
+        for index, (name, count) in enumerate(self.catalog.categories(self.query_one("#guided", Checkbox).value)):
             key = f"category-{index}"
             self.category_values[key] = name
             sidebar.add_option(Option(Text(f"{name} ({count})"), id=key))
@@ -153,6 +173,11 @@ class ToolExplorer(App):
         self.search_timer = self.set_timer(0.12, self.request_search)
 
     def on_checkbox_changed(self, event: Checkbox.Changed):
+        if event.checkbox.id not in {"guided", "installed", "favorites"}:
+            return
+        if event.checkbox.id == "guided":
+            self.category = None
+            self.refresh_categories()
         self.request_search()
 
     def on_input_submitted(self, event: Input.Submitted):
@@ -166,12 +191,12 @@ class ToolExplorer(App):
         self.search_generation += 1
         self.search_worker(self.search_generation, self.query_one("#search", Input).value,
                            self.category, self.query_one("#installed", Checkbox).value,
-                           self.query_one("#favorites", Checkbox).value)
+                           self.query_one("#favorites", Checkbox).value, self.query_one("#guided", Checkbox).value)
 
     @work(thread=True, exclusive=True, group="catalog-search", exit_on_error=False)
-    def search_worker(self, generation, query, category, installed, favorites):
+    def search_worker(self, generation, query, category, installed, favorites, guided):
         try:
-            rows = self.catalog.search(query, category, installed, favorites, limit=250)
+            rows = self.catalog.search(query, category, installed, favorites, limit=250, guided=guided)
             self.call_from_thread(self.display_results, generation, rows)
         except Exception as error:
             self.call_from_thread(self.notify, text(error), severity="error")
@@ -184,7 +209,8 @@ class ToolExplorer(App):
             status = "installed" if row["installed"] else "catalog" if row["available"] else "reference"
             table.add_row(Text(("* " if row["favorite"] else "") + row["name"]),
                           Text(status), Text(row["purpose"].replace("\n", " ")), key=row["id"])
-        self.query_one("#status", Static).update(f"{len(rows)} results (maximum 250) • no automatic execution • Ctrl+R reads local package caches")
+        scope = "reviewed guides" if self.query_one("#guided", Checkbox).value else "all metadata (guides may be unavailable)"
+        self.query_one("#status", Static).update(f"{len(rows)} results • {scope} • Ctrl+T tasks • Ctrl+P command builder")
         if self.opening_tool:
             tool_id, self.opening_tool = self.opening_tool, None
             for index, row in enumerate(rows):
@@ -234,6 +260,51 @@ class ToolExplorer(App):
     def action_back(self):
         self.remove_class("detail-open")
         self.query_one("#results", DataTable).focus()
+
+    def on_button_pressed(self, event):
+        if event.button.id == "tasks": self.action_tasks()
+        elif event.button.id == "build": self.action_build()
+
+    def action_tasks(self):
+        def chosen(task):
+            if not task:
+                return
+            self.opening_tool = task["tool"]
+            self.category = None
+            self.query_one("#search", Input).value = task["tool"]
+            self.request_search()
+            self.notify(task["why"], timeout=8)
+            if task["template"]:
+                self.push_screen(CommandBuilder(template_id=task["template"], helper_session=self.helper_session))
+        self.push_screen(TaskPicker(), chosen)
+
+    def action_build(self):
+        self.push_screen(CommandBuilder(tool=self.selected_id, helper_session=self.helper_session))
+
+    def refresh_context(self):
+        try:
+            ready = helper_state.read(self.helper_session, "ready.json")
+            label = "Bash Readline connected. Ctrl+G in shell: context. Stage a preview here; Ctrl+X then Ctrl+I at an empty shell prompt inserts it WITHOUT Enter."
+            if not ready:
+                label = "Read-only helper: no editable-buffer adapter connected. Use tasks/guides and manual previews. The selected shell is not replaced."
+            self.query_one("#helper-status", Static).update(label)
+            event = helper_state.read(self.helper_session, "context.json")
+            if not event or event.get("updated") == self.context_updated:
+                return
+            self.context_updated = event["updated"]
+            tool = self.catalog.tool_for_executable(event.get("executable") or "")
+            if not tool:
+                self.query_one("#helper-status", Static).update("No known simple executable in that buffer. Search manually; no arguments or credentials were saved. " + label)
+                return
+            self.opening_tool = tool
+            self.category = None
+            self.query_one("#guided", Checkbox).value = bool(self.catalog.show(tool)["guide_provenance"])
+            self.query_one("#installed", Checkbox).value = False
+            self.query_one("#favorites", Checkbox).value = False
+            self.query_one("#search", Input).value = tool
+            self.request_search()
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            self.query_one("#helper-status", Static).update("Helper state unavailable; manual browsing remains usable.")
 
     def action_favorite(self):
         if self.selected_id: self.favorite_worker(self.selected_id)

@@ -4,10 +4,12 @@ An independent security-tool catalog with one SQLite FTS5 database shared by a
 CLI and keyboard-driven Textual TUI. It runs without Solace, BlackArch, Hyprland,
 Elephant, a particular terminal emulator, an AI model or a network service.
 
-**Alpha software, not a production binary distribution.** The assisted shell,
-package installation actions and an Elephant provider remain future milestones.
-`sbtools shell` is deliberately not implemented rather than pretending
-a text widget is a real shell. No shell startup file or keyboard shortcut changes.
+**Alpha software, not a production binary distribution.** `sbtools shell` is now
+an opt-in interactive-helper prototype with a real tmux PTY shell and offline
+guidance alongside it. Bash has an explicit-key Readline adapter; other shells
+remain read-only without being replaced. It is not an AI agent or an automatic
+command runner. Package installation actions and an Elephant provider remain
+future milestones. No persistent shell startup file or global keyboard-binding changes.
 The native Arch package adds a **Solace Assist** application-menu entry that opens
 the real offline explorer in a terminal; it does not launch a security tool.
 
@@ -130,6 +132,10 @@ Override storage **before the subcommand**, useful for disposable tests:
 
 ## TUI navigation
 
+- The explorer starts with **Reviewed guides** selected, not an alphabetical dump
+  of all imported packages. Uncheck it to browse metadata-only entries.
+- **Start a task / Ctrl+T** offers guided starting workflows; **Build command /
+  Ctrl+P** opens a typed form with option explanations and an explicit preview.
 - Type in the search bar; task words use the same FTS/curated keywords as the CLI.
 - Tab between categories, results and filters; Ctrl+G focuses categories.
 - F toggles a favorite while results have focus.
@@ -141,6 +147,45 @@ Search is bounded/debounced, and worker results are generation-checked so stale
 queries do not replace newer results. Narrow 80-column terminals have a separate
 detail view; larger terminals show categories/results/details side by side.
 Notes/tags can be edited through the CLI and are visible in tool details.
+
+## Try the interactive helper prototype
+
+Install the optional Textual dependency and tmux, then run from a normal terminal:
+
+```bash
+sbtools shell
+```
+
+Or open **Solace Assist Helper (Prototype)** from the native application menu.
+The left pane is your selected interactive shell, with normal terminal rendering,
+job control and programs handled by tmux's real PTYs. The right pane is the themed
+offline helper, not a simulated shell widget.
+
+1. In Bash, type `readelf` **without Enter**, then press **Ctrl+G**. The helper
+   shows the matching guide. Only a conservative executable hint is shared; the
+   command's arguments, credentials and terminal output are not scraped or saved.
+2. Switch right with **Ctrl+B, Right**. Use **Ctrl+T** for a task or **Ctrl+P**
+   to build a reviewed command. Fill the form, then **Generate preview**.
+3. Optionally press **Stage for shell**. Nothing is inserted yet.
+4. Switch left with **Ctrl+B, Left**. Clear any existing input yourself. Press
+   **Ctrl+X, then Ctrl+I** at the empty prompt. The Bash adapter inserts the
+   revalidated single-line preview, **without Enter**. Nonempty input is never
+   overwritten. Review/edit it and press Enter yourself if you want to execute it.
+5. `exit` or Ctrl+D at an empty shell prompt closes this disposable helper.
+
+Bash startup settings are sourced through a temporary session-only rc wrapper;
+your `.bashrc` and login-shell choice are not modified. The two helper bindings
+apply only inside this session (Emacs and Vi insertion keymaps). Zsh, Fish, POSIX
+sh and unknown shells keep their original executable and get read-only guidance;
+no editable buffer or insertion capability is claimed for them. Choose a Bash
+session explicitly with `sbtools shell --shell /usr/bin/bash` if desired.
+
+Each helper uses a private tmux server/socket, not an existing tmux server or
+configuration. Detaching or closing its terminal ends this disposable session and
+its jobs; it is not a persistent job manager. Private runtime state and staged
+fields are cleaned on normal exit, HUP or TERM. A forced SIGKILL/system crash may
+leave private runtime files until removed or the runtime directory is cleared.
+See [interactive-helper boundaries](docs/INTERACTIVE_HELPER.md).
 
 ### Appearance
 
@@ -181,13 +226,14 @@ Fish and generic/unknown-shell fallback need explicit integration tests. An
 unsupported grammar gets documentation/manual context, not guessed quoting or
 reconstructed buffers from terminal output. Commands must never auto-submit.
 
-An internal POSIX PTY transport now has real-TTY, resize, explicit-input, Ctrl+C,
-exit-status and cleanup tests, including a test that input is not submitted until
-an explicit Enter. It does not emulate a terminal, infer an editable buffer from
-output or provide command insertion. It is not exposed as `sbtools shell` yet.
+The standalone PTY transport remains a separate tested foundation. The prototype
+shell UI delegates terminal emulation/job control to tmux and uses Bash Readline
+for truthful editing state, never terminal-output reconstruction. Tests cover
+actual PTYs, nonempty-buffer preservation, no implicit Enter, explicit execution
+of a test stub, private state, generic read-only fallback and server cleanup.
 
-Next: richer source-checked templates, a thin optional Elephant provider, and
-shell editing adapters; real assisted-shell mode remains its own milestone. Black does not
+Next: richer source-checked templates, a thin optional Elephant provider and
+validated Zsh/Fish editing adapters. This is not a finished cross-shell release. Black does not
 depend on Assist to boot. Original code and documentation are MIT licensed; see
 LICENSE and NOTICE for third-party boundaries. Native package signing and binary
 release validation remain separate milestones.

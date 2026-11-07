@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Solace Assist Helper (Prototype)
+GenericName=Interactive shell guidance
+Comment=Real shell beside offline guides and a command builder; never auto-submit
+Exec=sbtools shell
+TryExec=tmux
+Terminal=true
+Icon=utilities-terminal
+Categories=System;Utility;
+Keywords=BlackArch;security;shell;helper;interactive;
+StartupNotify=false

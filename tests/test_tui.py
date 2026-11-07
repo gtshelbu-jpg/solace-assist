@@ -30,10 +30,10 @@ class TUITests(unittest.IsolatedAsyncioTestCase):
         with patch("subprocess.run", side_effect=AssertionError("browsing must not execute anything")):
             async with app.run_test(size=(140, 42)) as pilot:
                 await pilot.pause(0.3)
-                self.assertEqual(app.query_one("#results", DataTable).row_count, 14)
+                self.assertEqual(app.query_one("#results", DataTable).row_count, 8)
                 app.query_one("#search", Input).value = "enumerate smb"
                 await pilot.pause(0.4)
-                self.assertEqual(app.query_one("#results", DataTable).row_count, len(self.catalog.search("enumerate smb")))
+                self.assertEqual(app.query_one("#results", DataTable).row_count, len(self.catalog.search("enumerate smb", guided=True)))
                 self.assertIn(app.selected_id, {"smbclient", "smbmap"})
                 selected = app.selected_id
                 app.query_one("#results", DataTable).focus()
@@ -100,7 +100,7 @@ class TUITests(unittest.IsolatedAsyncioTestCase):
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause(0.2)
             self.assertEqual(app.current_theme.background, "#101514")
-            self.assertEqual(app.query_one("#results", DataTable).row_count, 14)
+            self.assertEqual(app.query_one("#results", DataTable).row_count, 8)
 
     async def test_launcher_detail_opens_requested_tool_on_narrow_screen(self):
         app = ToolExplorer(self.catalog, initial_tool="smbclient", initial_query="smbclient")

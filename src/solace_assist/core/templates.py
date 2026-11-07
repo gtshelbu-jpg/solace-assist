@@ -9,18 +9,22 @@ TEMPLATES = {
     "readelf-header": {
         "tool": "readelf", "description": "Inspect an ELF file header without running it",
         "arguments": {"file": "path"}, "network": False,
+        "options": "-h reads the ELF header and architecture; it does not run the file.",
     },
     "readelf-symbols": {
         "tool": "readelf", "description": "Inspect ELF symbols with wide output",
         "arguments": {"file": "path"}, "network": False,
+        "options": "--wide avoids truncated columns; --symbols lists available symbols, not decompiled source.",
     },
     "tcpdump-file": {
         "tool": "tcpdump", "description": "Read at most 20 packets from an existing capture, without name resolution",
         "arguments": {"file": "path"}, "network": False,
+        "options": "-r reads an existing capture; -n disables name resolution; -c 20 bounds the packet count.",
     },
     "nmap-services": {
         "tool": "nmap", "description": "Version probes on one explicitly authorized IP and port list",
         "arguments": {"target": "single-ip", "ports": "port-list"}, "network": True,
+        "options": "-sV actively probes service versions; -p limits probes to your explicit ports. This is not passive inspection.",
     },
 }
 
