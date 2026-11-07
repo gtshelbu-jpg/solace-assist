@@ -10,6 +10,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.theme import Theme
 from textual.containers import Horizontal, VerticalScroll
+from textual.css.query import NoMatches
 from textual.widgets import Button, Checkbox, DataTable, Footer, Header, Input, Markdown, OptionList, Static
 from textual.widgets.option_list import Option
 
@@ -117,8 +118,8 @@ class ToolExplorer(App):
         yield Input(value=self.initial_query, placeholder="Search a task: enumerate SMB, analyze firmware, decode radio signals…", id="search")
         with Horizontal(id="filters"):
             yield Checkbox("Reviewed guides", value=self.start_guided, id="guided")
-            yield Checkbox("Installed snapshot only", id="installed")
-            yield Checkbox("Favorites only", id="favorites")
+            yield Checkbox("Installed", id="installed", tooltip="Only tools in the last explicitly synchronized installed-package snapshot")
+            yield Checkbox("Favorites", id="favorites", tooltip="Only your saved favorites")
         yield Static("Bundled purpose references; Ctrl+R explicitly imports local package metadata.", id="status", markup=False)
         with Horizontal(id="body"):
             yield OptionList(id="categories")
@@ -282,19 +283,24 @@ class ToolExplorer(App):
         self.push_screen(CommandBuilder(tool=self.selected_id, helper_session=self.helper_session))
 
     def refresh_context(self):
+        # Timers may already be queued when a screen is tearing down.
+        try:
+            status = self.query_one("#helper-status", Static)
+        except NoMatches:
+            return
         try:
             ready = helper_state.read(self.helper_session, "ready.json")
             label = "Bash Readline connected. Ctrl+G in shell: context. Stage a preview here; Ctrl+X then Ctrl+I at an empty shell prompt inserts it WITHOUT Enter."
             if not ready:
                 label = "Read-only helper: no editable-buffer adapter connected. Use tasks/guides and manual previews. The selected shell is not replaced."
-            self.query_one("#helper-status", Static).update(label)
+            status.update(label)
             event = helper_state.read(self.helper_session, "context.json")
             if not event or event.get("updated") == self.context_updated:
                 return
             self.context_updated = event["updated"]
             tool = self.catalog.tool_for_executable(event.get("executable") or "")
             if not tool:
-                self.query_one("#helper-status", Static).update("No known simple executable in that buffer. Search manually; no arguments or credentials were saved. " + label)
+                status.update("No known simple executable in that buffer. Search manually; no arguments or credentials were saved. " + label)
                 return
             self.opening_tool = tool
             self.category = None
@@ -304,7 +310,7 @@ class ToolExplorer(App):
             self.query_one("#search", Input).value = tool
             self.request_search()
         except (ValueError, OSError, KeyError, TypeError) as error:
-            self.query_one("#helper-status", Static).update("Helper state unavailable; manual browsing remains usable.")
+            status.update("Helper state unavailable; manual browsing remains usable.")
 
     def action_favorite(self):
         if self.selected_id: self.favorite_worker(self.selected_id)

@@ -77,6 +77,7 @@ class BuilderTests(unittest.IsolatedAsyncioTestCase):
             await pilot.pause(.5)
             self.assertEqual(app.selected_id, "wireshark")
             self.assertNotIn("private-capture", (ipc / "context.json").read_text())
+        app.refresh_context()  # A queued timer after unmount must be harmless.
 
     async def test_unknown_shell_preview_is_structured_and_network_requires_authorization(self):
         app = ToolExplorer(self.catalog)
@@ -98,3 +99,10 @@ class BuilderTests(unittest.IsolatedAsyncioTestCase):
             await pilot.pause(.2)
             self.assertIsNotNone(screen.generated)
             self.assertTrue(screen.query_one("#builder-stage", Button).disabled)
+
+    async def test_filters_fit_the_real_narrow_helper_pane(self):
+        app = ToolExplorer(self.catalog)
+        async with app.run_test(size=(63, 40)) as pilot:
+            await pilot.pause(.3)
+            for name in ("guided", "installed", "favorites"):
+                self.assertLessEqual(app.query_one("#" + name, Checkbox).region.right, 63)
